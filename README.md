@@ -36,6 +36,14 @@ Stage 1: TRANSFORMATION          Stage 2: COMBINATION           Stage 3: ARGMAX
 
 ---
 
+## Layout View
+
+Physical layout in Cadence Virtuoso:
+
+![Virtuoso Layout](docs/virtuoso_layout.png)
+
+---
+
 ## Files
 
 ```
@@ -156,15 +164,13 @@ Basic test sequence:
 - Inference only (no training)
 - Sequential processing (one graph at a time)
 
-
 ---
 
 ## License
 
-MIT License - See LICENSE file
-
+MIT License - See LICENSE 
 
 ---
 
 **Status:** ✅ Complete and tested  
-**Last Updated:** December 2025
+**Last Updated:** December 2024
