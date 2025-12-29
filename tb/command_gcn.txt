@@ -1,0 +1,1 @@
+vcs -timescale=1ns/100ps -sverilog Counter.sv Scratch_Pad.sv Matrix_FM_WM_Memory.sv Vector_Multiplier.sv Transformation_FSM.sv Transformation_Block.sv COO_Address_Counter.sv COO_Decoder.sv Matrix_FM_WM_ADJ_Memory.sv Vector_adder.sv Combination_FSM.sv Combination_Block.sv Argmax.sv GCN.sv GCN_TB.sv
