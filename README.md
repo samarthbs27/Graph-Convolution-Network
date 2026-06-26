@@ -11,21 +11,11 @@ Project 2 (ML-guided PPA sweep automation) lives in the companion
 
 ## Design Overview
 
-The GCN accelerator classifies nodes in a sparse graph using a single-layer graph convolution:
+The GCN accelerator classifies nodes in a sparse graph using a single-layer graph convolution
+across three pipeline stages: feature-weight matrix multiplication (Transformation), COO-based
+sparse graph aggregation (Combination), and per-node argmax classification (Argmax).
 
-```
-Input Graph (6 nodes, 96 features/node, COO adjacency)
-        │
-        ▼
-┌─────────────────────┐     ┌─────────────────────┐     ┌──────────────┐
-│   TRANSFORMATION    │────►│    COMBINATION      │────►│    ARGMAX    │
-│  Feature × Weight   │     │  Graph Aggregation  │     │  Node Class  │
-│  96-wide parallel   │     │  COO-format sparse  │     │  per node    │
-│  MAC datapath       │     │  adjacency walk     │     │              │
-└─────────────────────┘     └─────────────────────┘     └──────────────┘
-        │
-        └── ~63 clock cycles end-to-end for 6-node graph
-```
+![GCN Block Diagram](images/Block_Diagram.png)
 
 | Parameter | Value |
 |---|---|
@@ -34,6 +24,7 @@ Input Graph (6 nodes, 96 features/node, COO adjacency)
 | Output classes | 3 |
 | Datapath width | 5-bit input, 16-bit dot product |
 | Adjacency format | COO (sparse) |
+| End-to-end latency | ~74 clock cycles (6-node graph) |
 
 ---
 
@@ -163,6 +154,15 @@ Output: `checkpoints/`, `reports/`, `GDS/GCN_<period>.gds`
 
 3. **IO hold exemption** — `set_false_path -hold` on input/output ports removed 3
    spurious IO hold violations. reg2reg hold slack is +0.134 ns with 0 violations.
+
+---
+
+## Layout
+
+Post-route GDS viewed in Cadence Virtuoso — ASAP7 predictive 7nm, 1 GHz (freq_1000_01) run.
+30,047 µm² cell area, 18,831 logic cells, 74% placed density across 10 routing layers.
+
+![GCN Post-Route Layout — 1 GHz](images/virtuoso_layout.png)
 
 ---
 

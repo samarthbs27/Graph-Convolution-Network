@@ -15,15 +15,15 @@ module GCN_TB
     parameter COO_NUM_OF_ROWS = 2,			
     parameter COO_BW = $clog2(COO_NUM_OF_COLS),
     parameter MAX_ADDRESS_WIDTH = 2,
-    parameter HALF_CLOCK_CYCLE = // put your half clock cycle here. For example, if your clk=500, then put 250 here.
+    parameter HALF_CLOCK_CYCLE = 500 // 1.0 ns clock (1 GHz): half-period = 500 ps (timescale 1ps/100fs)
 )
 ();
 
 
-  string feature_filename = "MODIFY_YOUR_PATH_HERE/Data/feature_data.txt"; // modify the path to the files to match your case
-  string weight_filename = "MODIFY_YOUR_PATH_HERE/Data/weight_data.txt";
-  string coo_filename = "MODIFY_YOUR_PATH_HERE/Data/coo_data.txt";
-  string gold_address_filename = "MODIFY_YOUR_PATH_HERE/Data/gold_address.txt";
+  string feature_filename = "Data/feature_data.txt";
+  string weight_filename = "Data/weight_data.txt";
+  string coo_filename = "Data/coo_data.txt";
+  string gold_address_filename = "Data/gold_address.txt";
 
   logic read_enable;
   logic write_enable;

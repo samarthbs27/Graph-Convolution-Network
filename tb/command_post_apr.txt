@@ -1,0 +1,109 @@
+# =============================================================
+# Post-APR Verification — GCN Accelerator
+# Reference: Post-APR_tutorial.pdf (EEE525)
+# Run all commands from the GCN/ project root unless noted.
+# =============================================================
+
+
+# ---------------------------------------------------------------
+# STEP 0 — Edit tb/GCN_TB_post_syn_apr.sv before compiling
+# ---------------------------------------------------------------
+# Line 18:  set   HALF_CLOCK_CYCLE = 500
+#           (clock = 1.0 ns  →  half-period = 500 ps;
+#            timescale is 1ps/100fs so the unit is ps)
+#
+# Lines 23-26:  replace all four MODIFY_YOUR_PATH_HERE strings
+#           with the absolute path to your Data/ folder, e.g.:
+#           /home/<netid>/GCN/Data
+#
+# Example after edit (replace /home/sbsudhar with your actual home path):
+#   parameter HALF_CLOCK_CYCLE = 500
+#   string feature_filename = "/home/sbsudhar/GCN/Data/feature_data.txt";
+#   string weight_filename  = "/home/sbsudhar/GCN/Data/weight_data.txt";
+#   string coo_filename     = "/home/sbsudhar/GCN/Data/coo_data.txt";
+#   string gold_address_filename = "/home/sbsudhar/GCN/Data/gold_address.txt";
+
+
+# ---------------------------------------------------------------
+# STEP 1 — Verify ASAP7 Verilog cell model path
+# ---------------------------------------------------------------
+# Confirm the Verilog functional models exist (used in STEP 2):
+#   ls /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_27/VERILOG/
+#
+# Confirmed path (note capital V in Verilog):
+#   /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_27/Verilog/
+# RVT files to use (matching synthesis):
+#   asap7sc7p5t_INVBUF_RVT_TT_201020.v
+#   asap7sc7p5t_AO_RVT_TT_201020.v
+#   asap7sc7p5t_OA_RVT_TT_201020.v
+#   asap7sc7p5t_SEQ_RVT_TT_201020.v
+#   asap7sc7p5t_SIMPLE_RVT_TT_201020.v
+
+
+# ---------------------------------------------------------------
+# STEP 2 — Gate-level functional simulation (VCS)
+# ---------------------------------------------------------------
+# Compile: ASAP7 cell models → gate-level netlist → testbench
+# The testbench instantiates module GCN; GCN_1000.apr.v defines it.
+
+vcs -timescale=1ps/100fs -sverilog \
+    /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_27/Verilog/asap7sc7p5t_INVBUF_RVT_TT_201020.v \
+    /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_27/Verilog/asap7sc7p5t_AO_RVT_TT_201020.v \
+    /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_27/Verilog/asap7sc7p5t_OA_RVT_TT_201020.v \
+    /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_27/Verilog/asap7sc7p5t_SEQ_RVT_TT_201020.v \
+    /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_27/Verilog/asap7sc7p5t_SIMPLE_RVT_TT_201020.v \
+    apr/GDS/GCN_1000.apr.v \
+    tb/GCN_TB_post_syn_apr.sv
+
+# Run:
+./simv
+
+# Expected output (if netlist is functionally correct):
+#   max_addi_answer[0]     DUT: 0       GOLD: 0
+#   max_addi_answer[1]     DUT: ...     GOLD: ...
+#   ... (6 lines, DUT == GOLD for all nodes)
+# Any "ERROR: The above address outputs are Conflicting" = mismatch.
+
+
+# ---------------------------------------------------------------
+# STEP 3 — LVS source netlist generation (v2lvs)
+# Tutorial ref: Post-APR_tutorial.pdf Section 2
+# Run from your Virtuoso working directory.
+# ---------------------------------------------------------------
+# Copy CDL reference first:
+#   cp /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/CDL/LVS/asap7sc7p5t_28_R.cdl .
+
+# v2lvs -i -v apr/GDS/GCN_1000.apr.v \
+#        -o GCN_1000.sp \
+#        -n -a"[]" \
+#        -lsr asap7sc7p5t_28_R.cdl \
+#        -s  asap7sc7p5t_28_R.cdl
+
+# GCN_1000.sp is the source netlist for Calibre LVS.
+# In Calibre LVS → Inputs: uncheck "Generate source netlist from schematic",
+# then point to GCN_1000.sp.
+
+
+# ---------------------------------------------------------------
+# STEP 4 — DRC: import GDS into Cadence Virtuoso + Calibre
+# Tutorial ref: Post-APR_tutorial.pdf Section 1
+# Run from your Virtuoso working directory.
+# ---------------------------------------------------------------
+# (a) Add to cds.lib:
+#       DEFINE asap7sc7p5t_28 /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/cdk
+
+# (b) Copy helper scripts:
+#       cp /data/projects/EEE525/scripts/streamIn.sh  .
+#       cp /data/projects/EEE525/scripts/strminref.txt .
+
+# (c) Edit streamIn.sh:
+#       GDS file  → <absolute_path>/GCN/apr/GDS/GCN_1000.gds
+#       top_cell  → GCN
+
+# (d) Source and launch Virtuoso:
+#       source setup_env_cadence.csh
+#       source streamIn.sh
+#       virtuoso &
+
+# (e) In Library Manager: find your library → GCN → layout
+#     Run Calibre DRC from the Virtuoso menu.
