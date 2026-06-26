@@ -1,1 +1,1 @@
-vcs -timescale=1ns/100ps -sverilog Argmax.sv tb_argmax.sv
+﻿vcs -timescale=1ns/100ps -sverilog rtl/Argmax.sv tb/tb_argmax.sv

@@ -1,5 +1,5 @@
 
-module Transformation_FSM 
+module Transformation_FSM
   #(parameter FEATURE_ROWS = 6,
     parameter WEIGHT_COLS = 3,
     parameter COUNTER_WEIGHT_WIDTH = $clog2(WEIGHT_COLS),
@@ -17,7 +17,7 @@ module Transformation_FSM
   output logic enable_scratch_pad,
   output logic enable_weight_counter,
   output logic enable_feature_counter,
-  output logic read_feature_or_weight, 
+  output logic read_feature_or_weight,
   output logic done
 );
 
@@ -39,92 +39,60 @@ module Transformation_FSM
       current_state <= next_state;
 
   always_comb begin
+    // Default outputs — all disabled, state holds
+    enable_write_fm_wm_prod = 1'b0;
+    enable_read              = 1'b0;
+    enable_scratch_pad       = 1'b0;
+    enable_weight_counter    = 1'b0;
+    enable_feature_counter   = 1'b0;
+    read_feature_or_weight   = 1'b0;
+    done                     = 1'b0;
+    next_state               = current_state;
+
     case (current_state)
 
       START: begin
-		enable_write_fm_wm_prod = 1'b0;
-        enable_read = 1'b0;
-		enable_scratch_pad = 1'b0;
-		enable_weight_counter = 1'b0;
-		enable_feature_counter = 1'b0;
-		read_feature_or_weight = 1'b0; 
-		done = 1'b0;
-
-		if (start) begin
-			next_state = READ_WEIGHT_DATA;
-		end 
-		else begin 
-			next_state = START;
-		end 
-        	
+        if (start)
+          next_state = READ_WEIGHT_DATA;
       end
 
       READ_WEIGHT_DATA: begin
-		enable_write_fm_wm_prod = 1'b0;
-		enable_read = 1'b1;
-		enable_scratch_pad = 1'b1;
-		enable_weight_counter = 1'b0;
-		enable_feature_counter = 1'b0;
-		read_feature_or_weight=  1'b0; 
-		done = 1'b0;
-
-		next_state = READ_FEATURE_DATA;
+        enable_read        = 1'b1;
+        enable_scratch_pad = 1'b1;
+        next_state         = READ_FEATURE_DATA;
       end
 
       INCREMENT_WEIGHT_COUNTER: begin
-		enable_write_fm_wm_prod = 1'b0;
-        enable_read = 1'b0;
-		enable_scratch_pad = 1'b0;
-		enable_weight_counter = 1'b1;
-		enable_feature_counter = 1'b0;
-		read_feature_or_weight=  1'b0; 
-		done = 1'b0;
-
-        	next_state = READ_WEIGHT_DATA;
+        enable_weight_counter = 1'b1;
+        next_state            = READ_WEIGHT_DATA;
       end
 
       READ_FEATURE_DATA: begin
-		enable_write_fm_wm_prod = 1'b0;
-        enable_read = 1'b1;
-		enable_scratch_pad = 1'b0;
-		enable_weight_counter = 1'b0;
-		enable_feature_counter = 1'b0;
-		read_feature_or_weight = 1'b1; 
-		done = 1'b0;
-
-        	next_state = INCREMENT_FEATURE_COUNTER;
+        enable_read            = 1'b1;
+        read_feature_or_weight = 1'b1;
+        next_state             = INCREMENT_FEATURE_COUNTER;
       end
 
       INCREMENT_FEATURE_COUNTER: begin
-		enable_write_fm_wm_prod = 1'b1;
-        enable_read = 1'b0;
-		enable_scratch_pad = 1'b0;
-		enable_weight_counter = 1'b0;
-		enable_feature_counter = 1'b1;
-		read_feature_or_weight = 1'b1; 
-		done = 1'b0;
+        enable_write_fm_wm_prod = 1'b1;
+        enable_feature_counter  = 1'b1;
+        read_feature_or_weight  = 1'b1;
 
-		if (weight_count == WEIGHT_COLS - 1 && feature_count == FEATURE_ROWS - 1) begin
-			next_state = DONE;
-		end 
-		else if (feature_count == FEATURE_ROWS - 1) begin
-			next_state = INCREMENT_WEIGHT_COUNTER;
-		end
-		else  begin
-			next_state = READ_FEATURE_DATA;
-		end
+        if (weight_count == WEIGHT_COLS - 1 && feature_count == FEATURE_ROWS - 1)
+          next_state = DONE;
+        else if (feature_count == FEATURE_ROWS - 1)
+          next_state = INCREMENT_WEIGHT_COUNTER;
+        else
+          next_state = READ_FEATURE_DATA;
       end
 
       DONE: begin
-		enable_write_fm_wm_prod = 1'b0;
-        enable_read = 1'b0;
-		enable_scratch_pad = 1'b0;
-		enable_weight_counter = 1'b0;
-		enable_feature_counter = 1'b0;
-		read_feature_or_weight = 1'b0; 
-		done = 1'b1;
+        done = 1'b1;
+        // next_state stays DONE (default = current_state)
+      end
 
-		next_state = DONE;
+      default: begin
+        next_state = START;
       end
 
     endcase

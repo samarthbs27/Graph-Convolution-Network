@@ -1,0 +1,101 @@
+*----------------------------------------------------------------------------------------
+*	Innovus 23.12-s091_1 (64bit) 07/30/2024 16:11 (Linux 3.10.0-693.el7.x86_64)
+*	
+*
+* 	Date & Time:	2026-Jun-26 00:27:51 (2026-Jun-26 00:27:51 GMT)
+*
+*----------------------------------------------------------------------------------------
+*
+*	Design: GCN
+*
+*	Liberty Libraries used: 
+*	        default_setup_view: /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/LIB/NLDM/asap7sc7p5t_INVBUF_RVT_TT_nldm_220122.lib
+*	        default_setup_view: /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/LIB/NLDM/asap7sc7p5t_AO_RVT_TT_nldm_211120.lib
+*	        default_setup_view: /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/LIB/NLDM/asap7sc7p5t_OA_RVT_TT_nldm_211120.lib
+*	        default_setup_view: asap7sc7p5t_SEQ_RVT_TT_nldm_201020.lib
+*	        default_setup_view: /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/LIB/NLDM/asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120.lib
+*
+*	Power Domain used: 
+*              Rail:        VDD      Voltage:        0.7 
+*
+*       Power View : default_setup_view
+*
+*       User-Defined Activity : N.A.
+*
+*       Activity File: N.A.
+*
+*       Hierarchical Global Activity: N.A.
+*
+*       Global Activity: N.A.
+*
+*       Sequential Element Activity: 0.200000
+*
+*       Primary Input Activity: 0.200000
+*
+*       Default icg ratio: N.A.
+*
+*       Global Comb ClockGate Ratio: N.A.
+*
+*	Power Units = 1mW
+*
+*	Time Units = 1e-12 secs 
+*
+*       report_power -outfile ./reports/power/power.rpt
+*
+-----------------------------------------------------------------------------------------
+
+
+Total Power 
+-----------------------------------------------------------------------------------------
+Total Internal Power:        1.50057429 	   47.8778%
+Total Switching Power:       1.63248374 	   52.0866%
+Total Leakage Power:         0.00111531 	    0.0356%
+Total Power:                 3.13417334 
+-----------------------------------------------------------------------------------------
+
+
+Group                           Internal   Switching     Leakage       Total  Percentage 
+                                Power      Power         Power         Power  (%)        
+-----------------------------------------------------------------------------------------
+Sequential                        0.9336     0.08013   0.0003163       1.014       32.36 
+Macro                                  0           0           0           0           0 
+IO                                     0           0           0           0           0 
+Combinational                     0.5221       1.334   0.0007903       1.856       59.23 
+Clock (Combinational)            0.04479      0.2188   8.697e-06      0.2636       8.412 
+Clock (Sequential)                     0           0           0           0           0 
+-----------------------------------------------------------------------------------------
+Total                              1.501       1.632    0.001115       3.134         100 
+-----------------------------------------------------------------------------------------
+
+
+Rail                  Voltage   Internal   Switching     Leakage       Total  Percentage 
+                                Power      Power         Power         Power  (%)        
+-----------------------------------------------------------------------------------------
+VDD                       0.7      1.501       1.632    0.001115       3.134         100 
+
+
+Clock                           Internal   Switching     Leakage       Total  Percentage 
+                                Power      Power         Power         Power  (%)        
+-----------------------------------------------------------------------------------------
+clk                              0.04479      0.2188   8.697e-06      0.2636       8.412 
+-----------------------------------------------------------------------------------------
+Total (excluding duplicates)     0.04479      0.2188   8.697e-06      0.2636       8.412 
+-----------------------------------------------------------------------------------------
+Clock: clk
+Clock Period: 0.001400 usec 
+Clock Toggle Rate:  1428.5714 Mhz 
+Clock Static Probability:  0.5000
+
+
+
+-----------------------------------------------------------------------------------------
+*	Power Distribution Summary: 
+*                Highest Average Power: transformation_block_inst/CTS_ccl_a_buf_00011 (BUFx24_ASAP7_75t_R):          0.02695 
+*                Highest Leakage Power: transformation_block_inst/CTS_ccl_a_buf_00011 (BUFx24_ASAP7_75t_R):        1.432e-06 
+*          Total Cap:      2.73857e-11 F
+*          Total instances in design: 10140
+*          Total instances in design with no power:     0
+*          Total instances in design with no activity:     0
+*          Total Fillers and Decap:     0
+-----------------------------------------------------------------------------------------
+

@@ -1,1 +1,1 @@
-vcs -timescale=1ns/100ps -sverilog COO_Address_Counter.sv COO_Decoder.sv Matrix_FM_WM_ADJ_Memory.sv Vector_adder.sv Combination_FSM.sv Combination_Block.sv tb_combination_block.sv
+﻿vcs -timescale=1ns/100ps -sverilog rtl/COO_Address_Counter.sv rtl/COO_Decoder.sv rtl/Matrix_FM_WM_ADJ_Memory.sv rtl/Vector_adder.sv rtl/Combination_FSM.sv rtl/Combination_Block.sv tb/tb_combination_block.sv

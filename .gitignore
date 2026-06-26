@@ -1,0 +1,56 @@
+# Tool-generated run artifacts (large, not portable)
+flow/runs/
+*.gds
+*.oas
+*.db
+*.ddc
+*.svf
+
+# Innovus working directories
+innovus.cmd*
+innovus.log*
+*.enc
+*.enc.dat/
+fplan.fp
+*.globals
+!**/Default.globals
+
+# User-specific server paths — never commit the filled-in version
+**/user_config.tcl
+!**/user_config.tcl.template
+
+# DC Compiler working directories
+work/
+default.svf
+command.log
+
+# Large netlists from runs (keep only committed ones in flow/)
+*.apr.v
+*.syn.v
+
+# SPEF / SDF (large, regenerated each run)
+*.spef
+*.sdf
+
+# VCD files (large simulation dumps)
+*.vcd
+*.fsdb
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# ML model binaries (commit only final models explicitly)
+models/*.pkl
+models/*.joblib
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp

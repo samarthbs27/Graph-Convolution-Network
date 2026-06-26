@@ -1,0 +1,41 @@
+###############################################################
+#  Cadence Innovus initialization for GCN APR
+#  ASAP7 predictive 7nm PDK, RVT cells
+#
+#  Run from your APR work directory on the ASU server:
+#    innovus> source Default.globals
+#    innovus> init_design
+#
+#  UPDATE init_verilog below to match your synthesis output path.
+###############################################################
+#
+# Version 1.1
+#
+
+# Load user paths (gitignored — contains your server paths)
+# Copy GCN/flow/user_config.tcl.template to user_config.tcl and fill in.
+set _cfg [file join [file dirname [info script]] ../user_config.tcl]
+if {[file exists $_cfg]} {
+    source $_cfg
+} else {
+    error "Missing user_config.tcl — copy user_config.tcl.template and fill in your paths."
+}
+
+set ::TimeLib::tsgMarkCellLatchConstructFlag 1
+set conf_qxconf_file {NULL}
+set conf_qxlib_file {NULL}
+set defHierChar {/}
+set distributed_client_message_echo {1}
+set gpsPrivate::dpgNewAddBufsDBUpdate 1
+set gpsPrivate::lsgEnableNewDbApiInRestruct 1
+set init_gnd_net {VSS}
+set init_lef_file {/apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/techlef_misc/asap7_tech_4x_201209.lef /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_27/LEF/scaled/asap7sc7p5t_27_R_4x_201211.lef}
+set init_mmmc_file {./Default.view}
+set init_pwr_net {VDD}
+set init_verilog "$synth_out_dir/GCN.${clk_period}.syn.v"
+set lsgOCPGainMult 1.000000
+set pegDefaultResScaleFactor 1.000000
+set pegDetailResScaleFactor 1.000000
+set timing_library_float_precision_tol 0.000010
+set timing_library_load_pin_cap_indices {}
+set tso_post_client_restore_command {update_timing ; write_eco_opt_db ;}

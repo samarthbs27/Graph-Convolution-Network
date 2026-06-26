@@ -1,176 +1,205 @@
-# GCN Hardware Accelerator
+# GCN Accelerator — RTL-to-GDS Physical Design Closure
 
-**A Graph Convolutional Network (GCN) implemented in SystemVerilog for FPGA**
+**ASIC physical design implementation of a sparse Graph Convolutional Network (GCN) accelerator
+from RTL to GDSII using Cadence Innovus and the ASAP7 predictive 7nm PDK.**
 
-College project implementing a hardware accelerator for graph neural networks.
-
----
-
-## What Does It Do?
-
-Takes a graph with 6 nodes and classifies each node into one of 3 categories using:
-- Node features (96 values per node)
-- Graph structure (which nodes are connected)
-- Learned weights
-
-**Example:** Social network where you classify users as "active", "casual", or "inactive" based on their activity and connections.
+This is Project 1 of a two-part physical design portfolio.
+Project 2 (ML-guided PPA sweep automation) lives in the companion
+[PPA-Pilot](https://github.com/samarthbs27/PPA-Pilot) repository.
 
 ---
 
-## Architecture
+## Design Overview
 
-Simple 3-stage pipeline:
+The GCN accelerator classifies nodes in a sparse graph using a single-layer graph convolution:
 
 ```
-Stage 1: TRANSFORMATION          Stage 2: COMBINATION           Stage 3: ARGMAX
-┌─────────────────────┐         ┌─────────────────────┐       ┌─────────────────────┐
-│                     │         │                     │       │                     │
-│  Matrix Multiply    │    ──►  │  Graph Aggregation  │  ──►  │  Find Max (Class)   │
-│  FM × WM            │         │  Using Adjacency    │       │  Per Node           │
-│                     │         │                     │       │                     │
-│  ~36 cycles         │         │  ~12 cycles         │       │  ~15 cycles         │
-└─────────────────────┘         └─────────────────────┘       └─────────────────────┘
+Input Graph (6 nodes, 96 features/node, COO adjacency)
+        │
+        ▼
+┌─────────────────────┐     ┌─────────────────────┐     ┌──────────────┐
+│   TRANSFORMATION    │────►│    COMBINATION      │────►│    ARGMAX    │
+│  Feature × Weight   │     │  Graph Aggregation  │     │  Node Class  │
+│  96-wide parallel   │     │  COO-format sparse  │     │  per node    │
+│  MAC datapath       │     │  adjacency walk     │     │              │
+└─────────────────────┘     └─────────────────────┘     └──────────────┘
+        │
+        └── ~63 clock cycles end-to-end for 6-node graph
 ```
 
-**Total:** ~63 clock cycles to classify all 6 nodes
+| Parameter | Value |
+|---|---|
+| Nodes | 6 |
+| Features per node | 96 |
+| Output classes | 3 |
+| Datapath width | 5-bit input, 16-bit dot product |
+| Adjacency format | COO (sparse) |
 
 ---
 
-## Layout View
+## Physical Design Flow
 
-Physical layout in Cadence Virtuoso:
+```
+SystemVerilog RTL
+      │
+      ▼  dc_shell (Synopsys Design Compiler V-2023.12)
+Synthesized Netlist + SDC
+      │
+      ▼  innovus (Cadence Innovus 23.12)
+Floorplan → Power Grid → Tap Cells → Pin Assignment
+      │
+      ▼
+Global Placement → Pre-CTS Opt → CTS → Post-CTS Opt
+      │
+      ▼
+NanoRoute → Post-Route Opt (OCV) → SPEF Extraction
+      │
+      ▼
+Post-Route STA · Power Report · DRC · GDS/DEF/SPEF
+```
 
-![Virtuoso Layout](docs/virtuoso_layout.png)
+**PDK:** ASAP7 predictive 7nm PDK, RVT standard-cell library, TT/0.7V/25C corner
 
 ---
 
-## Files
+## Repository Structure
 
 ```
-rtl/                              # All SystemVerilog source files
-├── GCN.sv                       # Top module (main file)
-├── Transformation_Block.sv      # Stage 1: Matrix multiplication
-├── Combination_Block.sv         # Stage 2: Graph operations  
-├── Argmax.sv                    # Stage 3: Classification
-└── ... (10 more support files)
-
-docs/                            # Documentation and diagrams
-└── (architecture diagrams)
+GCN/
+├── rtl/                    # SystemVerilog source (14 modules)
+├── tb/                     # Testbenches and VCS command files
+├── constraints/
+│   └── GCN.sdc             # Human-editable SDC template
+├── flow/
+│   ├── synth/synth.tcl     # Design Compiler synthesis script
+│   ├── apr/innovus_flow.tcl # Cadence Innovus APR script
+│   ├── apr/Default.globals  # Innovus initialization
+│   ├── apr/Default.view     # MMMC timing corner setup
+│   └── user_config.tcl.template  # Server path config (gitignored when filled)
+├── reports/
+│   └── raw/
+│       ├── baseline/        # First end-to-end run (with RTL bugs, no antenna fix)
+│       └── optimized_02/    # Final 714 MHz closure result
+├── docs/
+│   └── closure_report.md   # Closure narrative with before/after metrics
+├── Data/                   # Simulation input vectors (feature, weight, COO, gold)
+└── images/                 # Layout screenshots, congestion maps
 ```
 
 ---
 
-## Quick Start
+## Quickstart
 
-### 1. Check Files
-Make sure you have all 14 `.sv` files in the `rtl/` folder.
+### Prerequisites
 
-### 2. Compile (ModelSim Example)
+- Synopsys Design Compiler (V-2023.12 or later)
+- Cadence Innovus (23.12 or later)
+- ASAP7 PDK installed at `/apps/share64/rocky8/asap7/`
+- Cadence VCS for simulation
+
+### 1. Configure paths
+
 ```bash
-vlog -sv rtl/*.sv
-# Should compile without errors
+cp flow/user_config.tcl.template flow/user_config.tcl
+# Edit user_config.tcl: set project_home, rtl_dir, synth_out_dir, clk_period
 ```
 
-### 3. Synthesize (Vivado Example)
-```tcl
-read_verilog -sv rtl/*.sv
-synth_design -top GCN -part xc7a100tcsg324-1
+### 2. Run simulation (functional verification)
+
+```bash
+# From project root
+vcs -timescale=1ns/100ps -sverilog $(cat tb/command_gcn.txt)
+./simv
 ```
 
----
+### 3. Run synthesis
 
-## Inputs/Outputs
-
-### Inputs
-- `clk` - Clock signal
-- `reset` - Reset (active high)
-- `start` - Start processing
-- `data_in[0:95]` - Input data (96 × 5-bit values)
-- `coo_in[5:0]` - Graph edge data
-
-### Outputs
-- `done` - Processing complete
-- `max_addi_answer[0:5]` - Results (6 nodes × 2-bit class)
-- `read_address[12:0]` - Memory address
-- `enable_read` - Memory read enable
-
----
-
-## Specifications
-
-| Parameter | Value | Notes |
-|-----------|-------|-------|
-| Nodes | 6 | Number of nodes in graph |
-| Features | 96 | Features per node |
-| Classes | 3 | Output categories (0, 1, or 2) |
-| Data Width | 5-bit | Input precision |
-| Latency | ~63 cycles | Time to process one graph |
-
----
-
-## How to Change Graph Size
-
-Edit parameters in `GCN.sv`:
-
-```systemverilog
-GCN #(
-    .FEATURE_ROWS(10),      // Change to 10 nodes
-    .FEATURE_COLS(128),     // Change to 128 features
-    .WEIGHT_COLS(5)         // Change to 5 classes
-) my_gcn (
-    // ... ports
-);
+```bash
+# From synthesis work directory
+dc_shell -f flow/synth/synth.tcl -output_log_file syn.log
 ```
 
----
+Output: `synthesis/GCN.<period>.syn.v` and `synthesis/GCN.<period>.syn.sdc`
 
-## Resource Usage (Estimated)
+### 4. Run APR
 
-For default configuration (6 nodes, 96 features):
-- **Flip-Flops:** ~3,000
-- **LUTs:** ~12,000  
-- **DSP Blocks:** 96 (multipliers)
-- **BRAM:** 3-6 blocks
+```bash
+# From APR work directory
+innovus -init flow/apr/innovus_flow.tcl
+# Or interactively: innovus> source flow/apr/innovus_flow.tcl
+```
 
-**Fits on:** Xilinx Artix-7, Zynq-7000, Intel Cyclone V
-
----
-
-## Design Features
-
-✅ **Fully Synthesizable** - Works with Vivado, Quartus, etc.  
-✅ **Sparse Graphs** - Efficient COO format  
-✅ **Undirected Graphs** - Processes edges both ways  
-✅ **Parameterized** - Easy to scale up/down  
-✅ **Fixed-Point** - Hardware-efficient arithmetic
+Output: `checkpoints/`, `reports/`, `GDS/GCN_<period>.gds`
 
 ---
 
-## Testing
+## Baseline vs Optimized Results (714 MHz / 1.4 ns)
 
-Basic test sequence:
-1. Assert `reset` 
-2. Load data into memory
-3. Set `start = 1`
-4. Wait for `done = 1`
-5. Read `max_addi_answer` for results
+| Metric | Baseline | Optimized | Change |
+|---|---|---|---|
+| Clock period | 1.400 ns | 1.400 ns | — |
+| Setup WNS | +0.093 ns | +0.094 ns | clean |
+| Setup violations | 0 | 0 | clean |
+| Hold WNS | −0.001 ns | +0.134 ns | closed |
+| Hold violations | 3 | **0** | −3 |
+| DHLx1 inferred latches | 9 | **0** | RTL fix |
+| Antenna DRC violations | unknown | **0** | fixed |
+| Geometry DRC | 9,054 | 8,872 | −182 |
+| Cell area | 21,409 µm² | 21,022 µm² | −1.8% |
+| Instance count | 10,520 | 10,140 | −3.6% |
+| Total power | 3.156 mW | 3.134 mW | −0.7% |
+| Core density | 52.6% | 51.8% | — |
+
+### What changed
+
+1. **RTL fix** — `Transformation_FSM.sv` `always_comb` had no default outputs and
+   no `default` case, causing Design Compiler to infer 9 DHLx1 level-sensitive latches.
+   Fixed by adding default output assignments at the top of the block and an explicit
+   `default: next_state = START` case. Verified by re-simulation before re-synthesis.
+
+2. **Antenna fixing enabled** — `setNanoRouteMode -route_detail_fix_antenna true`
+   eliminated all antenna DRC violations. Geometry DRC (M2 off-grid, V3/V5 enclosure)
+   is a known ASAP7/NanoRoute open-source flow limitation.
+
+3. **IO hold exemption** — `set_false_path -hold` on input/output ports removed 3
+   spurious IO hold violations. reg2reg hold slack is +0.134 ns with 0 violations.
+
+---
+
+## Artifacts
+
+| Artifact | Path (on server) |
+|---|---|
+| Synthesized netlist | `synthesis/GCN.1400.syn.v` |
+| SDC constraints | `synthesis/GCN.1400.syn.sdc` |
+| Routed DEF | `apr/checkpoints/GCN_1400.final.enc` |
+| GDS | `apr/GDS/GCN_1400.gds` |
+| SPEF | `apr/GDS/GCN_1400.spef` |
+| Gate-level netlist | `apr/GDS/GCN_1400.apr.v` |
+| Timing reports | `apr/reports/timing/postRoute/` |
+| Power report | `apr/reports/power/power.rpt` |
+| DRC report | `apr/reports/drc.rpt` |
+| Baseline raw reports | `reports/raw/baseline/` |
+| Optimized raw reports | `reports/raw/optimized_02/` |
 
 ---
 
 ## Known Limitations
 
-- Graph size fixed at synthesis (not runtime configurable)
-- Works best for small graphs (6-100 nodes)
-- Inference only (no training)
-- Sequential processing (one graph at a time)
+- **Geometry DRC (8,872):** M2 off-grid and V3/V5 enclosure violations are inherent
+  to NanoRoute routing against ASAP7's aggressive spacing rules. Full DRC signoff
+  requires Calibre with the complete ASAP7 DRC deck.
+- **Max-fanout DRVs (~120 nets):** 96-wide scratchpad enable signals exceed the
+  SDC `set_max_fanout 16` limit. DC inserts buffer trees but Innovus re-optimizes
+  placement and partially collapses them. Does not affect timing (setup WNS > 0).
+- **Single corner:** ASAP7 open PDK ships TT libraries only. A real flow would use
+  SS libs for setup and FF libs for hold in MMMC.
+- **Power activity:** Power reported at default 0.2 toggle rate (no VCD).
 
 ---
 
-## License
+## References
 
-MIT License - See LICENSE 
-
----
-
-**Status:** ✅ Complete and tested  
-**Last Updated:** December 2024
+- [ASAP7 PDK](https://github.com/The-OpenROAD-Project/asap7)
+- [Cadence Innovus Documentation](https://support.cadence.com)
+- [PPA-Pilot — ML-guided PPA sweep automation](https://github.com/samarthbs27/PPA-Pilot)

@@ -1,0 +1,52 @@
+# Version:1.0 MMMC View Definition File
+# Do Not Remove Above Line
+#
+# MMMC (Multi-Mode Multi-Corner) timing configuration for GCN APR
+# ASAP7 RVT cells, TT/0.7V/25C corner for both setup and hold
+# (A true SS/FF MMMC would use SS libs for setup and FF libs for hold;
+#  ASAP7 open PDK ships TT only, so both corners use TT here.)
+#
+# Innovus processes this file in its own MMMC reader scope, so variables
+# set in the main session (e.g. $synth_out_dir from user_config.tcl) are
+# not visible here. Source user_config.tcl explicitly to get them.
+set _cfg [file join [file dirname [info script]] ../user_config.tcl]
+if {[file exists $_cfg]} { source $_cfg } else {
+    error "Default.view: cannot find user_config.tcl at $_cfg"
+}
+
+create_library_set -name libset_slow \
+  -timing [list \
+    /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/LIB/NLDM/asap7sc7p5t_INVBUF_RVT_TT_nldm_220122.lib \
+    /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/LIB/NLDM/asap7sc7p5t_AO_RVT_TT_nldm_211120.lib \
+    /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/LIB/NLDM/asap7sc7p5t_OA_RVT_TT_nldm_211120.lib \
+    [file join [file dirname [info script]] asap7sc7p5t_SEQ_RVT_TT_nldm_201020.lib] \
+    /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/LIB/NLDM/asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120.lib]
+
+create_library_set -name libset_fast \
+  -timing [list \
+    /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/LIB/NLDM/asap7sc7p5t_INVBUF_RVT_TT_nldm_220122.lib \
+    /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/LIB/NLDM/asap7sc7p5t_AO_RVT_TT_nldm_211120.lib \
+    /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/LIB/NLDM/asap7sc7p5t_OA_RVT_TT_nldm_211120.lib \
+    [file join [file dirname [info script]] asap7sc7p5t_SEQ_RVT_TT_nldm_201020.lib] \
+    /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/LIB/NLDM/asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120.lib]
+
+create_rc_corner -name RC_corner_25 \
+  -T 25 \
+  -qx_tech_file /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/qrc/qrcTechFile_typ03_scaled4xV06
+
+create_delay_corner -name delayCorner_slow \
+  -library_set libset_slow \
+  -rc_corner RC_corner_25
+
+create_delay_corner -name delayCorner_fast \
+  -library_set libset_fast \
+  -rc_corner RC_corner_25
+
+# $synth_out_dir is set by Default.globals (sourced before this file)
+create_constraint_mode -name common \
+  -sdc_files [list $synth_out_dir/GCN.${clk_period}.syn.sdc]
+
+create_analysis_view -name default_setup_view -constraint_mode common -delay_corner delayCorner_slow
+create_analysis_view -name default_hold_view  -constraint_mode common -delay_corner delayCorner_fast
+
+set_analysis_view -setup [list default_setup_view] -hold [list default_hold_view]

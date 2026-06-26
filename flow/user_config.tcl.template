@@ -1,0 +1,31 @@
+# ============================================================
+#  user_config.tcl  --  NEVER commit the filled-in version
+# ============================================================
+#  Copy this file to user_config.tcl in the same directory,
+#  then update the variables below to match your server layout.
+#
+#  $env(HOME) expands to your home directory at runtime, so
+#  your username is never stored in any committed file.
+#
+#  Default assumes this layout on the server:
+#    $HOME/
+#    └── pd-closurelab-ppa-pilot/
+#        ├── RTL/          <- GCN SystemVerilog source files
+#        ├── synthesis/    <- DC runs from here; outputs go here
+#        └── apr/          <- Innovus runs from here
+#
+#  If you use a different layout, just change the paths below.
+# ============================================================
+
+# Root of the project on the server
+set project_home  "$env(HOME)/pd-closurelab-ppa-pilot"
+
+# Where RTL source files live
+set rtl_dir       "$project_home/rtl"
+
+# Where DC synthesis outputs go (.syn.v, .syn.sdc, .syn.sdf, reports)
+set synth_out_dir "$project_home/synthesis"
+
+# Clock period in picoseconds — change this one variable to sweep clock targets.
+# 1400 = 714 MHz (baseline closure), 1000 = 1 GHz (tighter closure run)
+set clk_period 1000
