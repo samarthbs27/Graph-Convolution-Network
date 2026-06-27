@@ -26,6 +26,15 @@ set rtl_dir       "$project_home/rtl"
 # Where DC synthesis outputs go (.syn.v, .syn.sdc, .syn.sdf, reports)
 set synth_out_dir "$project_home/synthesis"
 
-# Clock period in picoseconds — change this one variable to sweep clock targets.
-# 1400 = 714 MHz (baseline closure), 1000 = 1 GHz (tighter closure run)
-set clk_period 1000
+# Clock period in picoseconds — change to sweep frequency targets.
+# 1400 = 714 MHz | 1000 = 1 GHz | 800 = 1.25 GHz | 600 = 1.67 GHz
+set clk_period 1400
+
+# Floorplan sweep parameters — synthesis does NOT need to re-run when only
+# these change. Vary these independently of clk_period to sweep PPA space.
+#   util_target:  core utilization  (0.40 / 0.50 / 0.55 / 0.65 / 0.70)
+#   aspect_ratio: die H/W ratio     (0.8 / 1.0 / 1.2 / 1.5)
+#   core_margin:  IO margin (µm)    (3 / 5 / 7 / 10)
+set util_target  0.50
+set aspect_ratio 1.0
+set core_margin  5

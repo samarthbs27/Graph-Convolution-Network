@@ -1,0 +1,4 @@
+    Hinst Name             Module Name                                                                                                                                                                             Inst Count           Total Area
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+GCN                                                                                                                                                                                                                     23473            41462.954
+  transformation_block_inst Transformation_Block_FEATURE_COLS96_WEIGHT_ROWS96_FEATURE_ROWS6_WEIGHT_COLS3_FEATURE_WIDTH5_WEIGHT_WIDTH5_DOT_PROD_WIDTH16_ADDRESS_WIDTH13_COUNTER_WEIGHT_WIDTH2_COUNTER_FEATURE_WIDTH3      21017            37138.876

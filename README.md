@@ -36,20 +36,21 @@ SystemVerilog RTL
       ▼  dc_shell (Synopsys Design Compiler V-2023.12)
 Synthesized Netlist + SDC
       │
-      ▼  innovus (Cadence Innovus 23.12)
+      ▼  innovus -batch -files innovus_flow.tcl  (Cadence Innovus 23.12)
 Floorplan → Power Grid → Tap Cells → Pin Assignment
       │
       ▼
-Global Placement → Pre-CTS Opt → CTS → Post-CTS Opt
+Global Placement → Pre-CTS Opt → CTS (CCOpt) → Post-CTS Opt
       │
       ▼
-NanoRoute → Post-Route Opt (OCV) → SPEF Extraction
+NanoRoute → Post-Route Opt (OCV/CPPR) → SPEF Extraction
       │
       ▼
-Post-Route STA · Power Report · DRC · GDS/DEF/SPEF
+Post-Route STA · Power Report · DRC · GDS / DEF / SPEF / APR netlist
 ```
 
-**PDK:** ASAP7 predictive 7nm PDK, RVT standard-cell library, TT/0.7V/25C corner
+**PDK:** ASAP7 predictive 7nm, RVT standard-cell library, TT/0.7V/25C corner  
+**STA mode:** `onChipVariation` with CPPR (`-cppr both`) for post-route analysis
 
 ---
 
@@ -57,24 +58,26 @@ Post-Route STA · Power Report · DRC · GDS/DEF/SPEF
 
 ```
 GCN/
-├── rtl/                    # SystemVerilog source (14 modules)
-├── tb/                     # Testbenches and VCS command files
+├── rtl/                         # SystemVerilog source (14 modules)
+├── tb/                          # Testbenches and VCS command files
 ├── constraints/
-│   └── GCN.sdc             # Human-editable SDC template
+│   └── GCN.sdc                  # Human-editable SDC template
 ├── flow/
-│   ├── synth/synth.tcl     # Design Compiler synthesis script
-│   ├── apr/innovus_flow.tcl # Cadence Innovus APR script
-│   ├── apr/Default.globals  # Innovus initialization
-│   ├── apr/Default.view     # MMMC timing corner setup
-│   └── user_config.tcl.template  # Server path config (gitignored when filled)
+│   ├── synth/synth.tcl          # Design Compiler synthesis script
+│   ├── apr/innovus_flow.tcl     # Cadence Innovus APR script
+│   ├── apr/Default.globals      # Server-specific init — not in repo
+│   ├── apr/Default.view         # MMMC timing corners — not in repo
+│   └── user_config.tcl.template # Per-run parameters (gitignored when filled)
 ├── reports/
 │   └── raw/
-│       ├── baseline/        # First end-to-end run (with RTL bugs, no antenna fix)
-│       └── optimized_02/    # Final 714 MHz closure result
+│       ├── baseline/            # First end-to-end run (pre-fix)
+│       ├── optimized_02/        # Final 714 MHz closure result
+│       ├── freq_0800_01/        # 1.25 GHz Pareto point
+│       └── freq_0600_01/        # 1.67 GHz Pareto point
 ├── docs/
-│   └── closure_report.md   # Closure narrative with before/after metrics
-├── Data/                   # Simulation input vectors (feature, weight, COO, gold)
-└── images/                 # Layout screenshots, congestion maps
+│   └── closure_report.md        # Closure narrative with before/after metrics
+├── Data/                        # Simulation input vectors
+└── images/                      # Layout screenshots, congestion maps
 ```
 
 ---
@@ -92,13 +95,12 @@ GCN/
 
 ```bash
 cp flow/user_config.tcl.template flow/user_config.tcl
-# Edit user_config.tcl: set project_home, rtl_dir, synth_out_dir, clk_period
+# Edit user_config.tcl: set synth_out_dir, clk_period, util_target, aspect_ratio, cong_effort
 ```
 
 ### 2. Run simulation (functional verification)
 
 ```bash
-# From project root
 vcs -timescale=1ns/100ps -sverilog $(cat tb/command_gcn.txt)
 ./simv
 ```
@@ -106,21 +108,20 @@ vcs -timescale=1ns/100ps -sverilog $(cat tb/command_gcn.txt)
 ### 3. Run synthesis
 
 ```bash
-# From synthesis work directory
 dc_shell -f flow/synth/synth.tcl -output_log_file syn.log
 ```
 
 Output: `synthesis/GCN.<period>.syn.v` and `synthesis/GCN.<period>.syn.sdc`
 
-### 4. Run APR
+### 4. Run APR (single run)
 
 ```bash
-# From APR work directory
-innovus -init flow/apr/innovus_flow.tcl
-# Or interactively: innovus> source flow/apr/innovus_flow.tcl
+# From APR work directory, with user_config.tcl in place
+innovus -batch -files flow/apr/innovus_flow.tcl -log logs/innovus_run
 ```
 
-Output: `checkpoints/`, `reports/`, `GDS/GCN_<period>.gds`
+For automated multi-configuration sweeps, report parsing, and ML-guided PPA optimization
+see the companion [PPA-Pilot](https://github.com/samarthbs27/PPA-Pilot) repository.
 
 ---
 
@@ -131,7 +132,7 @@ Output: `checkpoints/`, `reports/`, `GDS/GCN_<period>.gds`
 | Clock period | 1.400 ns | 1.400 ns | — |
 | Setup WNS | +0.093 ns | +0.094 ns | clean |
 | Setup violations | 0 | 0 | clean |
-| Hold WNS | −0.001 ns | +0.134 ns | closed |
+| Hold WNS | −0.001 ns | +0.134 ns | **closed** |
 | Hold violations | 3 | **0** | −3 |
 | DHLx1 inferred latches | 9 | **0** | RTL fix |
 | Antenna DRC violations | unknown | **0** | fixed |
@@ -143,23 +144,43 @@ Output: `checkpoints/`, `reports/`, `GDS/GCN_<period>.gds`
 
 ### What changed
 
-1. **RTL fix** — `Transformation_FSM.sv` `always_comb` had no default outputs and
-   no `default` case, causing Design Compiler to infer 9 DHLx1 level-sensitive latches.
-   Fixed by adding default output assignments at the top of the block and an explicit
-   `default: next_state = START` case. Verified by re-simulation before re-synthesis.
+1. **RTL fix** — `Transformation_FSM.sv` `always_comb` inferred 9 DHLx1 level-sensitive
+   latches (missing default outputs, unhandled enum states). Fixed by adding defaults at the
+   top of the block and an explicit `default` case. Re-verified in simulation.
 
 2. **Antenna fixing enabled** — `setNanoRouteMode -route_detail_fix_antenna true`
-   eliminated all antenna DRC violations. Geometry DRC (M2 off-grid, V3/V5 enclosure)
-   is a known ASAP7/NanoRoute open-source flow limitation.
+   eliminated all antenna DRC violations. Remaining geometry DRC (M2 off-grid, V3/V5
+   enclosure) is a known ASAP7/NanoRoute open-source flow limitation.
 
-3. **IO hold exemption** — `set_false_path -hold` on input/output ports removed 3
+3. **IO hold exemption** — `set_false_path -hold -from/to [get_ports *]` removed 3
    spurious IO hold violations. reg2reg hold slack is +0.134 ns with 0 violations.
+
+---
+
+## Frequency Pareto — All Four Clock Points
+
+All four clock targets passed timing first attempt. DC synthesis progressively replaces
+the `FAx1` full-adder tree with ASAP7-native MAJ (majority-gate) cells as frequency increases.
+
+| Metric | 714 MHz | 1.0 GHz | 1.25 GHz | 1.67 GHz |
+|---|---|---|---|---|
+| Clock period | 1.4 ns | 1.0 ns | 0.8 ns | 0.6 ns |
+| Setup WNS | +0.094 ns | +0.184 ns | +0.197 ns | +0.169 ns |
+| Cell area | 21,022 µm² | 30,047 µm² | 35,545 µm² | 41,463 µm² |
+| Instance count | 10,140 | 18,831 | 23,541 | 23,473 |
+| Total power | 3.13 mW | 6.92 mW | 10.93 mW | 16.65 mW |
+| Placed density | 51.8% | 74.0% | 87.0% | 81.8% |
+| CTS skew | 34.7 ps | — | 205.7 ps | 286.5 ps |
+| FAx1 cells | 2,403 | 795 | ~600 | **23** |
+| MAJ cells | 0 | ~1,048 | ~1,800 | **2,223** |
+
+Going 714 MHz → 1.67 GHz: area +97%, power +431%, timing passed at every point.
 
 ---
 
 ## Layout
 
-Post-route GDS viewed in Cadence Virtuoso — ASAP7 predictive 7nm, 1 GHz (freq_1000_01) run.
+Post-route GDS viewed in Cadence Virtuoso — ASAP7 predictive 7nm, 1 GHz run.
 30,047 µm² cell area, 18,831 logic cells, 74% placed density across 10 routing layers.
 
 ![GCN Post-Route Layout — 1 GHz](images/virtuoso_layout.png)
@@ -168,33 +189,33 @@ Post-route GDS viewed in Cadence Virtuoso — ASAP7 predictive 7nm, 1 GHz (freq_
 
 ## Artifacts
 
-| Artifact | Path (on server) |
+| Artifact | Location |
 |---|---|
-| Synthesized netlist | `synthesis/GCN.1400.syn.v` |
-| SDC constraints | `synthesis/GCN.1400.syn.sdc` |
-| Routed DEF | `apr/checkpoints/GCN_1400.final.enc` |
-| GDS | `apr/GDS/GCN_1400.gds` |
-| SPEF | `apr/GDS/GCN_1400.spef` |
-| Gate-level netlist | `apr/GDS/GCN_1400.apr.v` |
-| Timing reports | `apr/reports/timing/postRoute/` |
-| Power report | `apr/reports/power/power.rpt` |
-| DRC report | `apr/reports/drc.rpt` |
+| SystemVerilog RTL | `rtl/` |
+| SDC constraints | `constraints/GCN.sdc` |
+| Synthesis script | `flow/synth/synth.tcl` |
+| APR script | `flow/apr/innovus_flow.tcl` |
+| Synthesized netlist | on server: `synthesis/GCN.1400.syn.v` |
+| Post-route GDS | on server: `apr/GDS/GCN_1400.gds` |
+| SPEF | on server: `apr/GDS/GCN_1400.spef` |
+| Timing reports | on server: `apr/reports/timing/postRoute/` |
 | Baseline raw reports | `reports/raw/baseline/` |
 | Optimized raw reports | `reports/raw/optimized_02/` |
+| Sweep run reports | `reports/raw/runs/` (gitignored — transfer from server) |
 
 ---
 
 ## Known Limitations
 
-- **Geometry DRC (8,872):** M2 off-grid and V3/V5 enclosure violations are inherent
-  to NanoRoute routing against ASAP7's aggressive spacing rules. Full DRC signoff
-  requires Calibre with the complete ASAP7 DRC deck.
-- **Max-fanout DRVs (~120 nets):** 96-wide scratchpad enable signals exceed the
-  SDC `set_max_fanout 16` limit. DC inserts buffer trees but Innovus re-optimizes
-  placement and partially collapses them. Does not affect timing (setup WNS > 0).
-- **Single corner:** ASAP7 open PDK ships TT libraries only. A real flow would use
-  SS libs for setup and FF libs for hold in MMMC.
-- **Power activity:** Power reported at default 0.2 toggle rate (no VCD).
+- **Geometry DRC (8,872):** M2 off-grid and V3/V5 enclosure violations are inherent to
+  NanoRoute routing against ASAP7's aggressive spacing rules. Full DRC signoff requires
+  Calibre with the complete ASAP7 DRC deck.
+- **Max-fanout DRVs (~120 nets):** 96-wide scratchpad enable signals exceed `set_max_fanout 16`.
+  DC inserts buffer trees; timing is unaffected (setup WNS > 0).
+- **Single corner:** ASAP7 open PDK ships TT libraries only. A production flow would use SS
+  for setup guard and FF for hold guard via MMMC.
+- **Power activity:** Reported at default 0.2 toggle rate (no VCD back-annotation).
+- **No LVS:** SPICE netlists for the ASAP7 22b cell family are not bundled with the open PDK.
 
 ---
 
@@ -202,4 +223,5 @@ Post-route GDS viewed in Cadence Virtuoso — ASAP7 predictive 7nm, 1 GHz (freq_
 
 - [ASAP7 PDK](https://github.com/The-OpenROAD-Project/asap7)
 - [Cadence Innovus Documentation](https://support.cadence.com)
+- [Synopsys Design Compiler Documentation](https://support.synopsys.com)
 - [PPA-Pilot — ML-guided PPA sweep automation](https://github.com/samarthbs27/PPA-Pilot)

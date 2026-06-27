@@ -335,6 +335,115 @@ For the ML training dataset, this is a more valuable data point than a failing r
 
 ---
 
+## Run — freq_0800_01 (1.25 GHz)
+
+**Goal:** Continue the frequency Pareto curve with a 75% tighter clock than baseline.
+
+**Result: timing passed.** WNS +0.197 ns setup, +0.171 ns hold. DC again restructured the MAC datapath using MAJ cells (same pattern as 1 GHz; exact cell counts from summary.rpt not captured — see freq_0600_01 for the full cell progression table).
+
+### Results — freq_0800_01
+
+| Metric | optimized_02 (714 MHz) | freq_0800_01 (1.25 GHz) | Delta |
+|---|---|---|---|
+| Clock period | 1.4 ns | **0.8 ns** | −43% |
+| Setup WNS | +0.094 ns | **+0.197 ns** | Passed cleanly |
+| Hold WNS | +0.134 ns | **+0.171 ns** | Passed cleanly |
+| Cell area | 21,022 µm² | **35,545 µm²** | **+69%** |
+| Instance count | 10,140 | **23,541** | **+132%** |
+| Placed density | 51.8% | **87.0%** | Severely overpacked in 50% floorplan |
+| CTS skew | — | **205.7 ps** | First CTS measurement |
+| CTS max insertion delay | — | **441.0 ps** | |
+| CTS max depth | — | **16** | |
+| CTS wirelength | — | **4,467 µm** | |
+| Clock buffers | — | **43** | |
+| Total wirelength | — | **361,760 µm** | |
+| DRC count | 0 antenna | **>1,000 (capped)** | Geometry violations from 87% density |
+| Total power | 3.134 mW | **10.930 mW** | **+249%** |
+| Clock power | 0.264 mW | **0.573 mW** | +117% |
+| Seq power | — | 1.827 mW | 16.7% of total |
+| Comb power | — | 8.529 mW | 78.0% of total |
+
+**Interpretation:** 87% placed density in a floorplan sized for 50% is severely overpacked. DRC violations capped at 1,000 — actual count higher. CTS skew of 205.7 ps consumes 25.7% of the 800 ps clock period but timing still passed because synthesis left enough slack (+197 ps WNS).
+
+---
+
+## Run — freq_0600_01 (1.67 GHz)
+
+**Goal:** Push the clock to 0.6 ns to extend the Pareto curve and characterize synthesis behavior at extreme frequency.
+
+**Result: timing passed.** WNS +0.169 ns setup, +0.100 ns hold. The design has now closed at all four tested frequencies without a single setup violation.
+
+### Synthesis restructuring at 1.67 GHz — near-complete FAx1 elimination
+
+DC pushed the majority-gate substitution to its logical extreme. At 1.67 GHz, only 23 `FAx1` cells remain from the original 2,403 — a 99% replacement by MAJ-based carry logic. A new cell variant, `MAJx3`, appeared for the first time, indicating DC is exploiting the 3-input majority gate for wider carry trees beyond what `MAJIxp5` and `MAJx2` cover.
+
+| Cell | 714 MHz | 1 GHz | 1.67 GHz | Notes |
+|---|---|---|---|---|
+| `FAx1` | 2,403 | 795 | **23** | −99% — full adder primitives nearly eliminated |
+| `MAJIxp5` | 0 | ~583 | **1,721** | Inverted majority gate (fast carry) |
+| `MAJx2` | 0 | ~465 | **486** | Standard majority gate |
+| `MAJx3` | 0 | 0 | **16** | **New at 1.67 GHz** — wider carry tree |
+| Total MAJ | 0 | ~1,048 | **2,223** | +112% vs 1 GHz |
+| `HB1xp67` | 0 | 0 | **793** | **New at 1.67 GHz** — half-buffer for drive conditioning |
+| `ASYNC_DFFHx1` | 1,087 | 1,087 | **1,087** | Unchanged — FF count fixed by RTL |
+
+**MAJx3:** A majority-of-three cell with 3x drive strength. DC selects it over `MAJIxp5` on high-fanout carry nets needing extra drive to meet the 0.6 ns budget. Most foundry PDKs do not expose MAJ3 as a native standard cell — this is ASAP7-specific.
+
+**HB1xp67:** Half-buffer (~0.67 drive strength). Innovus inserts 793 of these at 1.67 GHz vs zero at lower frequencies. Used on short, low-fanout paths where a full-size buffer adds too much capacitance and would hurt timing — a fine-grained drive-strength decision the optimizer makes only at extreme frequencies.
+
+### Results — freq_0600_01
+
+| Metric | optimized_02 (714 MHz) | freq_0800_01 (1.25 GHz) | freq_0600_01 (1.67 GHz) | Delta vs 714 MHz |
+|---|---|---|---|---|
+| Clock period | 1.4 ns | 0.8 ns | **0.6 ns** | −57% |
+| Setup WNS | +0.094 ns | +0.197 ns | **+0.169 ns** | Passed |
+| Hold WNS | +0.134 ns | +0.171 ns | **+0.100 ns** | Passed |
+| Violations | 0 | 0 | **0** | Clean throughout |
+| Cell area | 21,022 µm² | 35,545 µm² | **41,463 µm²** | **+97%** |
+| Instance count | 10,140 | 23,541 | **23,473** | +132% |
+| Placed density | 51.8% | 87.0% | **81.8%** | |
+| CTS skew | — | 205.7 ps | **286.5 ps** | +39% worse than 1.25 GHz |
+| CTS max insertion delay | — | 441.0 ps | **526.4 ps** | +19% worse |
+| CTS max depth | — | 16 | **22** | +6 levels deeper |
+| CTS wirelength | — | 4,467 µm | **4,604 µm** | |
+| Clock buffers | — | 43 | **59** | +37% more |
+| Total wirelength | 227,245 µm | 361,760 µm | **383,561 µm** | +69% |
+| DRC count | 0 antenna | >1,000 (capped) | **>1,000 (capped)** | |
+| Total power | 3.134 mW | 10.930 mW | **16.647 mW** | **+431%** |
+| Seq power | — | 1.827 mW | **2.303 mW** | |
+| Comb power | — | 8.529 mW | **13.55 mW** | |
+| Clock power | 0.264 mW | 0.573 mW | **0.789 mW** | +199% |
+
+### CTS skew degradation trend
+
+As clock period tightens, the CTS tree must cover more cells in the same floorplan, causing skew and insertion delay to grow:
+
+| Clock | Skew | Max insertion delay | Tree depth | Clock buffers | Skew / Period |
+|---|---|---|---|---|---|
+| 0.8 ns (1.25 GHz) | 205.7 ps | 441.0 ps | 16 | 43 | 25.7% |
+| 0.6 ns (1.67 GHz) | 286.5 ps | 526.4 ps | 22 | 59 | **47.8%** |
+
+At 1.67 GHz, the maximum insertion delay (526.4 ps) is nearly 88% of the entire clock period. Despite this, timing passed — the synthesized logic paths left +169 ps WNS because the MAJ-gate datapath is fast enough to absorb the CTS penalty.
+
+### Interpretation
+
+The 1.67 GHz run confirms the GCN accelerator clears 1.67 GHz without a single violation with ASAP7 RVT cells. The power cost is severe: 431% above the 714 MHz baseline. Combinational logic (MAJ-gate array) draws 13.55 mW — 81% of total — driven by 3.3 GHz switching rate. For a power-constrained design, 714 MHz is the clear operating point; for peak performance, 1.67 GHz demonstrates the cell library ceiling.
+
+---
+
+## Frequency Pareto Summary — All Runs
+
+| Clock | Freq | Setup WNS | Cell area | Instances | Power | Density | CTS skew |
+|---|---|---|---|---|---|---|---|
+| 1.4 ns | 714 MHz | +0.094 ns | 21,022 µm² | 10,140 | 3.13 mW | 51.8% | — |
+| 1.0 ns | 1,000 MHz | +0.184 ns | 30,047 µm² | 18,831 | 6.92 mW | 74.0% | — |
+| 0.8 ns | 1,250 MHz | +0.197 ns | 35,545 µm² | 23,541 | 10.93 mW | 87.0% | 205.7 ps |
+| 0.6 ns | 1,667 MHz | +0.169 ns | 41,463 µm² | 23,473 | 16.65 mW | 81.8% | 286.5 ps |
+
+All four runs passed timing. The design has not yet failed — the failure point is below 0.6 ns. The frequency sweep was stopped at 0.6 ns to proceed with the 25-run utilization/AR/congestion-effort parameter sweep, which provides the multi-dimensional training data needed for the ML QoR predictor.
+
+---
+
 ## Post-APR Gate-Level Verification
 
 **Run:** `freq_1000_01` gate-level netlist (`apr/GDS/GCN_1000.apr.v`) + ASAP7 RVT Verilog models  

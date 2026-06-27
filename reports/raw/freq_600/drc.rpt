@@ -1,0 +1,33 @@
+#-check_same_via_cell true               # bool, default=false, user setting
+ *** Starting Verify DRC (MEM: 3888.9) ***
+
+  VERIFY DRC ...... Starting Verification
+  VERIFY DRC ...... Initializing
+  VERIFY DRC ...... Deleting Existing Violations
+  VERIFY DRC ...... Creating Sub-Areas
+  VERIFY DRC ...... Using new threading
+  VERIFY DRC ...... Sub-Area: {0.000 0.000 61.056 61.056} 1 of 16
+  VERIFY DRC ...... Sub-Area : 1 complete 878 Viols.
+  VERIFY DRC ...... Sub-Area: {61.056 0.000 122.112 61.056} 2 of 16
+  VERIFY DRC ...... Sub-Area : 2 complete 82 Viols.
+  VERIFY DRC ...... Sub-Area: {122.112 0.000 183.168 61.056} 3 of 16
+  VERIFY DRC ...... Sub-Area : 3 complete 27 Viols.
+  VERIFY DRC ...... Sub-Area: {183.168 0.000 242.784 61.056} 4 of 16
+  VERIFY DRC ...... Sub-Area : 4 complete 7 Viols.
+  VERIFY DRC ...... Sub-Area: {0.000 61.056 61.056 122.112} 5 of 16
+  VERIFY DRC ...... Sub-Area : 5 complete 4 Viols.
+  VERIFY DRC ...... Sub-Area: {61.056 61.056 122.112 122.112} 6 of 16
+**WARN: (IMPVFG-1103):	VERIFY DRC did not complete: Number of violations exceeds the Error Limit [1000]
+
+  Verification Complete : 1000 Viols.
+
+ Violation Summary By Layer and Type:
+
+	            Enc   OffGrd     Rect   Totals
+	M2            0      358      242      600
+	M3            0        2        0        2
+	V3          398        0        0      398
+	Totals      398      360      242     1000
+
+ *** End Verify DRC (CPU TIME: 0:00:01.4  ELAPSED TIME: 0:00:02.0  MEM: 264.1M) ***
+

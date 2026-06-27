@@ -1,0 +1,42 @@
+# user_config.tcl.template — copy to user_config.tcl on your server and fill in paths.
+# This file is sourced by Default.globals before init_design.
+# innovus_flow.tcl reads all variables defined here.
+#
+# DO NOT commit user_config.tcl (contains server-specific paths).
+# DO commit this template with placeholder values.
+
+# ---- Server-specific paths (edit these for your environment) ------
+# These are read by Default.globals / Default.view, not by innovus_flow.tcl directly.
+# Check Default.globals for the exact variable names used on your server.
+# Example:
+#   set ASAP7_LIB   /apps/share64/rocky8/asap7/asap7-20250127/asap7_pdk_r1p7/cdslib
+#   set NETLIST_DIR /home/<user>/GCN/flow/syn/results
+
+# ---- Sweep parameters (change per run) ----------------------------
+
+# Clock period in picoseconds.
+# ASAP7 Liberty files use ps units; this value is passed to the MMMC SDC.
+# Common values:
+#   1400 → 714 MHz    1000 → 1.0 GHz
+#    800 → 1.25 GHz    600 → 1.67 GHz
+set clk_period  1400
+
+# Core utilization target (fraction of core area filled with standard cells).
+# Typical range: 0.40 (relaxed) to 0.70 (congested).
+# Above 0.70 expect routing overflow and rising DRC count.
+set util_target 0.50
+
+# Aspect ratio H/W of the core rectangle.
+# 1.0 = square. Values below 1 give a wide die; above 1 give a tall die.
+# Affects wirelength distribution and congestion shape.
+set aspect_ratio 1.0
+
+# Core margin in microns (applied equally to all four sides).
+# Larger margin = more area for the power ring and IO pin escape.
+set core_margin 5
+
+# Placement congestion effort level.
+# low    → fast runtime, accept moderate overflow
+# medium → balanced; Innovus spreads cells to reduce congestion hotspots
+# high   → slow; maximizes routability, reduces DRC at cost of runtime
+set cong_effort "low"
