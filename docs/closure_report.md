@@ -269,7 +269,7 @@ This instructs Innovus that IO-terminating paths are not subject to hold analysi
 | **Setup violations** | 0 | **0** | Clean throughout |
 | **Hold WNS** | −0.001 ns | **+0.134 ns** | **+0.135 ns** |
 | **Hold violations** | 3 | **0** | **Fully closed** |
-| DRC — geometry | 9,054 | TBD | Pending optimized_02 DRC re-run |
+| DRC — geometry | 9,054 | ~8,872 | −2%; antenna diode insertion removed 182 violations |
 | DRC — antenna | included | **0** | Resolved via antenna diode insertion |
 | **Cell area** | 21,409 µm² | **21,022 µm²** | **−1.8%** |
 | **Instance count** | 10,520 | **10,140** | **−380 cells (−3.6%)** |
