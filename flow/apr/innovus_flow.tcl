@@ -47,6 +47,12 @@ set util_pct [expr {int($util_target * 100)}]
 set ar_int   [expr {int($aspect_ratio * 100)}]
 set run_dir  "./runs/run_${clk_period}_u${util_pct}_ar${ar_int}_${cong_effort}"
 
+# Netlist-swap runs (netlist_period != clk_period) get a _nl<period> suffix
+# so they never overwrite the matching normal run.
+if {[info exists netlist_period] && $netlist_period != $clk_period} {
+    append run_dir "_nl${netlist_period}"
+}
+
 # ---- Create output directories ------------------------------------
 file mkdir ${run_dir}/checkpoints
 file mkdir ${run_dir}/reports/timing/preCTS

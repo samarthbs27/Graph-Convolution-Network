@@ -1,7 +1,8 @@
 # Tool-generated run artifacts (large, not portable)
 flow/runs/
 reports/raw/runs/
-reports/raw/run_*.tar.gz
+reports/raw/*.tar.gz
+reports/raw/*.tar
 *.gds
 *.oas
 *.db

@@ -289,11 +289,17 @@ This instructs Innovus that IO-terminating paths are not subject to hold analysi
 
 **Goal:** Stress-test the GCN datapath at 1.0 ns to characterize the PPA cost of a 40% frequency increase.
 
-**Result: timing passed.** The design closed at 1 GHz with +0.184 ns setup margin and +0.197 ns hold margin. This was not the expected outcome — the ASAP7 7nm predictive cells are fast enough, and Synopsys DC aggressively restructured the MAC datapath to meet the tighter constraint.
+**Result: timing passed.** The design closed at 1 GHz with +0.184 ns setup margin and +0.197 ns hold margin. This was not the expected outcome — the ASAP7 7nm predictive cells are fast enough, and the implementation tools aggressively restructured the MAC datapath to meet the tighter constraint.
 
-### Synthesis restructuring at 1 GHz
+### Datapath restructuring at 1 GHz — performed by Innovus, not DC
 
-DC replaced most `FAx1` full adder cells with ASAP7-native majority-gate cells and XOR-based sum logic:
+*(Attribution corrected after the PPA-Pilot netlist-swap factorial: the DC netlists
+synthesized at 1.4 ns and 1.0 ns are near-identical — 11,018 cells, 2,428 FAx1,
+zero MAJ in both. The restructuring below happens inside Innovus's timing-driven
+optimization during APR. See ppa-pilot/docs/methodology_report.md Section 7.5.)*
+
+Post-route, most `FAx1` full adder cells are replaced with ASAP7-native
+majority-gate cells and XOR-based sum logic:
 
 | Cell | 714 MHz (optimized_02) | 1 GHz (freq_1000_01) | Notes |
 |---|---|---|---|
@@ -304,7 +310,13 @@ DC replaced most `FAx1` full adder cells with ASAP7-native majority-gate cells a
 | `NOR2xp33` | ~— | **2,378** | Carry propagation network |
 | Total logic instances | 10,140 | **18,831** | +86% |
 
-ASAP7 exposes MAJ3 (majority-of-three) as a native standard cell. DC selects it over `FAx1` under tight timing constraints because the majority gate implements the carry function directly in fewer logic stages. This is a majority-gate adder tree — not a carry-lookahead adder (CLA). CLA uses AND-OR lookahead chains; this uses MAJ primitives for carry with XOR for sum, which is faster in this PDK.
+ASAP7 exposes MAJ3 (majority-of-three) as a native standard cell. Innovus's
+optimizer selects it over `FAx1` under tight timing pressure because the majority
+gate implements the carry function directly in fewer logic stages. This is a
+majority-gate adder tree — not a carry-lookahead adder (CLA). CLA uses AND-OR
+lookahead chains; this uses MAJ primitives for carry with XOR for sum, which is
+faster in this PDK. (DC performs the same class of restructuring only at the
+hardest 600 ps target, where its netlist ships with 1,460 MAJ cells.)
 
 ### Results — freq_1000_01
 
@@ -373,9 +385,15 @@ For the ML training dataset, this is a more valuable data point than a failing r
 
 **Result: timing passed.** WNS +0.169 ns setup, +0.100 ns hold. The design has now closed at all four tested frequencies without a single setup violation.
 
-### Synthesis restructuring at 1.67 GHz — near-complete FAx1 elimination
+### Restructuring at 1.67 GHz — near-complete FAx1 elimination (DC + Innovus combined)
 
-DC pushed the majority-gate substitution to its logical extreme. At 1.67 GHz, only 23 `FAx1` cells remain from the original 2,403 — a 99% replacement by MAJ-based carry logic. A new cell variant, `MAJx3`, appeared for the first time, indicating DC is exploiting the 3-input majority gate for wider carry trees beyond what `MAJIxp5` and `MAJx2` cover.
+At 600 ps the restructuring is a two-stage effort: DC's netlist ships partially
+restructured (912 FAx1 + 1,460 MAJ — the only clock target where DC intervenes),
+and Innovus pushes the substitution to its logical extreme during APR. Post-route,
+only 23 `FAx1` cells remain from the original 2,403 — a 99% replacement by
+MAJ-based carry logic. A new cell variant, `MAJx3`, appeared for the first time,
+exploiting the 3-input majority gate for wider carry trees beyond what `MAJIxp5`
+and `MAJx2` cover.
 
 | Cell | 714 MHz | 1 GHz | 1.67 GHz | Notes |
 |---|---|---|---|---|
@@ -387,7 +405,7 @@ DC pushed the majority-gate substitution to its logical extreme. At 1.67 GHz, on
 | `HB1xp67` | 0 | 0 | **793** | **New at 1.67 GHz** — half-buffer for drive conditioning |
 | `ASYNC_DFFHx1` | 1,087 | 1,087 | **1,087** | Unchanged — FF count fixed by RTL |
 
-**MAJx3:** A majority-of-three cell with 3x drive strength. DC selects it over `MAJIxp5` on high-fanout carry nets needing extra drive to meet the 0.6 ns budget. Most foundry PDKs do not expose MAJ3 as a native standard cell — this is ASAP7-specific.
+**MAJx3:** A majority-of-three cell with 3x drive strength, selected over `MAJIxp5` on high-fanout carry nets needing extra drive to meet the 0.6 ns budget. Most foundry PDKs do not expose MAJ3 as a native standard cell — this is ASAP7-specific.
 
 **HB1xp67:** Half-buffer (~0.67 drive strength). Innovus inserts 793 of these at 1.67 GHz vs zero at lower frequencies. Used on short, low-fanout paths where a full-size buffer adds too much capacitance and would hurt timing — a fine-grained drive-strength decision the optimizer makes only at extreme frequencies.
 
@@ -464,7 +482,7 @@ $finish at simulation time 73,502,000 fs
 
 **Result: PASS** — all 6 node classifications match gold output.
 
-The routed 1 GHz netlist (18,831 logic cells, 30,047 µm² cell area) is functionally equivalent to the RTL. Synthesis restructuring from `FAx1` to majority-gate cells did not alter the computed result. Total simulation time of 73,502 ps at 1 GHz confirms end-to-end latency of ~74 clock cycles for a 6-node graph, consistent with FSM-level analysis (Transformation 43 + Combination 18 + Argmax 13 cycles).
+The routed 1 GHz netlist (18,831 logic cells, 30,047 µm² cell area) is functionally equivalent to the RTL. The tools' datapath restructuring from `FAx1` to majority-gate cells did not alter the computed result. Total simulation time of 73,502 ps at 1 GHz confirms end-to-end latency of ~74 clock cycles for a 6-node graph, consistent with FSM-level analysis (Transformation 43 + Combination 18 + Argmax 13 cycles).
 
 ---
 

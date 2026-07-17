@@ -32,7 +32,11 @@ set init_gnd_net {VSS}
 set init_lef_file {/apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_28/techlef_misc/asap7_tech_4x_201209.lef /apps/share64/rocky8/asap7/asap7-20250127/asap7sc7p5t_27/LEF/scaled/asap7sc7p5t_27_R_4x_201211.lef}
 set init_mmmc_file {./Default.view}
 set init_pwr_net {VDD}
-set init_verilog "$synth_out_dir/GCN.${clk_period}.syn.v"
+# Netlist-swap support: netlist_period selects WHICH synthesized netlist to
+# load, independent of clk_period (the APR timing target from the SDC).
+# Defaults to clk_period — normal runs behave exactly as before.
+if {![info exists netlist_period]} { set netlist_period $clk_period }
+set init_verilog "$synth_out_dir/GCN.${netlist_period}.syn.v"
 set lsgOCPGainMult 1.000000
 set pegDefaultResScaleFactor 1.000000
 set pegDetailResScaleFactor 1.000000

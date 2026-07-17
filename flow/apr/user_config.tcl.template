@@ -21,6 +21,11 @@
 #    800 → 1.25 GHz    600 → 1.67 GHz
 set clk_period  1400
 
+# OPTIONAL — netlist-swap experiments only.
+# Loads the netlist synthesized at THIS period while timing APR at clk_period.
+# Comment out (or set equal to clk_period) for normal runs.
+# set netlist_period 1400
+
 # Core utilization target (fraction of core area filled with standard cells).
 # Typical range: 0.40 (relaxed) to 0.70 (congested).
 # Above 0.70 expect routing overflow and rising DRC count.

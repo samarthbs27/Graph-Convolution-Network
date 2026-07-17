@@ -30,6 +30,12 @@ set synth_out_dir "$project_home/synthesis"
 # 1400 = 714 MHz | 1000 = 1 GHz | 800 = 1.25 GHz | 600 = 1.67 GHz
 set clk_period 1400
 
+# OPTIONAL — netlist-swap experiments only.
+# Loads the netlist synthesized at THIS period while timing APR at clk_period.
+# Separates synthesis restructuring from switching frequency in the QoR data.
+# Comment out (or set equal to clk_period) for normal runs.
+# set netlist_period 1400
+
 # Floorplan sweep parameters — synthesis does NOT need to re-run when only
 # these change. Vary these independently of clk_period to sweep PPA space.
 #   util_target:  core utilization  (0.40 / 0.50 / 0.55 / 0.65 / 0.70)
